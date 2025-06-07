@@ -852,7 +852,7 @@ combined_data <- combined_data %>%
 x_axis_labels <- c(
   "density" = "Density (thrush / ha)",
   "radius" = "Radius (m)",
-  "intervalLength" = "Time between surveys (days)",
+  "intervalLength" = "Time between surveys",
   "nSurveys" = "# of surveys",
   "surveyLength" = "Survey duration (min)"
 )
