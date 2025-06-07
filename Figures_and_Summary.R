@@ -131,8 +131,8 @@ psi_violin_plot <- full_results_psiVariation |>
   scale_fill_manual(values = density_colors) +
   labs(
     x = "Density (thrush / ha)",
-    y = "Ψ estimate",
-    title = "Variation in traditional Ψ estimates"
+    y = "Occupancy estimate",
+    title = "Variation in traditional occupancy estimates"
   ) +
   theme_bw() +
   theme(
@@ -147,7 +147,7 @@ print(psi_violin_plot)
 
 
 # ------------------------------------------------------------------------------
-# Compute variance, 95% confidence limits, and range of standard Ψ estimates
+# Compute variance, 95% confidence limits, and range of standard occupancy estimates
 # by density and radius
 # ------------------------------------------------------------------------------
 psi_summary <- full_results_psiVariation %>%
@@ -165,54 +165,6 @@ psi_summary <- full_results_psiVariation %>%
 # Print the summary
 # ------------------------------------------------------------------------------
 print(psi_summary)
-
-################################################################################
-
-# Filter for DailyBias
-daily_bias <- bias_long %>% filter(BiasType == "Daily")
-
-# Group by each variable and compute mean and 95% confidence limits
-daily_bias_summary <- daily_bias %>%
-  group_by(density, radius, intervalLength, nSurveys, surveyLength) %>%
-  summarise(
-    Mean = mean(BiasValue, na.rm = TRUE),
-    Lower_95CL = quantile(BiasValue, 0.025, na.rm = TRUE),
-    Upper_95CL = quantile(BiasValue, 0.975, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-# Print summary
-print(daily_bias_summary)
-
-
-# Identify the scenario with the highest mean bias
-highest_mean_bias <- daily_bias_summary %>%
-  filter(Mean == max(Mean, na.rm = TRUE))
-
-# Identify the scenario with the lowest mean bias
-lowest_mean_bias <- daily_bias_summary %>%
-  filter(Mean == min(Mean, na.rm = TRUE))
-
-# Identify the scenario closest to 0 bias
-closest_to_zero_bias <- daily_bias_summary %>%
-  filter(abs(Mean) == min(abs(Mean), na.rm = TRUE))
-
-# Identify the scenario with the widest confidence interval
-widest_CI <- daily_bias_summary %>%
-  mutate(CI_width = Upper_95CL - Lower_95CL) %>%
-  filter(CI_width == max(CI_width, na.rm = TRUE))
-
-# Identify the scenario with the most narrow confidence interval
-narrowest_CI <- daily_bias_summary %>%
-  mutate(CI_width = Upper_95CL - Lower_95CL) %>%
-  filter(CI_width == min(CI_width, na.rm = TRUE))
-
-# Print results
-print(highest_mean_bias)
-print(lowest_mean_bias)
-print(closest_to_zero_bias)
-print(widest_CI)
-print(narrowest_CI)
 
 
 
@@ -301,7 +253,7 @@ combined_plot <- (
 ) +
   plot_layout(guides = "collect") +  # Collect and unify legend
   plot_annotation(
-    title = "Effects of density & survey protocol on traditional Ψ estimates",
+    title = "Effects of density & survey protocol on traditional occupancy estimates",
     theme = theme(
       plot.title = element_text(size = 15, face = "bold", hjust = 0.5),  # Centered global title
       legend.position = "bottom",
@@ -374,10 +326,7 @@ print(surveyLength_summary)
 
 
 
-
-#-------------------------------------------------------------------------------
 # Figure 6
-#-------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 # Filter out "Initial" model
 # ------------------------------------------------------------------------------
@@ -394,7 +343,7 @@ success_rates <- filtered_results %>%
     .groups = "drop"
   ) %>%
   mutate(
-    success_label = ifelse(is.na(success_rate), "", paste0(round(success_rate * 100, 1), "%"))  # Format label
+    success_label = ifelse(is.na(success_rate), "", paste0(round(success_rate * 100, 1), "%"))
   )
 
 # ------------------------------------------------------------------------------
@@ -403,7 +352,7 @@ success_rates <- filtered_results %>%
 mse_values <- filtered_results %>%
   group_by(Model, density) %>%
   summarise(
-    mse = mean(DailyBias^2, na.rm = TRUE) + var(DailyBias, na.rm = TRUE),  # MSE = Mean(Squared Error) + Variance
+    mse = mean(DailyBias^2, na.rm = TRUE) + var(DailyBias, na.rm = TRUE),
     .groups = "drop"
   )
 
@@ -411,11 +360,9 @@ mse_values <- filtered_results %>%
 plot_labels <- success_rates %>%
   left_join(mse_values, by = c("Model", "density"))
 
-
-# ------------------------------------------------------------------------------
-# Plot: Faceted Box Plot (by Density) with Success Rate & MSE (as triangles)
 # ------------------------------------------------------------------------------
 # Calculate the statistical summaries for each group
+# ------------------------------------------------------------------------------
 box_stats <- filtered_results %>%
   group_by(Model, density) %>%
   summarise(
@@ -429,18 +376,21 @@ box_stats <- filtered_results %>%
 plot_labels <- plot_labels %>%
   left_join(box_stats, by = c("Model", "density"))
 
+# ------------------------------------------------------------------------------
 # Define custom labels for density levels
+# ------------------------------------------------------------------------------
 density_labels <- c(
   "0.2" = "0.2 thrush / ha",
   "0.1" = "0.1 thrush / ha",
   "0.05" = "0.05 thrush / ha"
 )
 
-
-# Plot with customized density labels
+# ------------------------------------------------------------------------------
+# Final plot
+# ------------------------------------------------------------------------------
 ggplot(filtered_results, aes(x = Model, y = DailyBias, fill = Model)) +
-  geom_boxplot(alpha = 0.7, show.legend = FALSE, outlier.alpha = 0, outlier.size = 0)+
-  scale_fill_viridis_d(option = "viridis", name = "Model") +
+  geom_boxplot(alpha = 0.7, show.legend = FALSE, outlier.alpha = 0, outlier.size = 0) +
+  scale_fill_viridis_d(option = "viridis", name = NULL) +  # Remove legend title "Model"
   scale_x_discrete(labels = c(
     "AsymptoticRegression" = "Asymptotic regression",
     "ExponentialDecay" = "Exponential decay",
@@ -449,12 +399,12 @@ ggplot(filtered_results, aes(x = Model, y = DailyBias, fill = Model)) +
     "MichaelisMenten" = "Michaelis-Menten"
   )) +
   facet_grid(
-    rows = vars(density), 
-    labeller = labeller(density = density_labels)  
+    rows = vars(density),
+    labeller = labeller(density = density_labels),
+    switch = "y"
   ) +
   labs(
     title = "Comparing daily bias between asymptotic models",
-    x = "Model",
     y = "Daily bias",
     shape = ""
   ) +
@@ -489,8 +439,11 @@ ggplot(filtered_results, aes(x = Model, y = DailyBias, fill = Model)) +
   theme(
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
+    axis.title.x = element_blank(),  # ✅ Removed x-axis label
     axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "bottom"
+    legend.position = "none",
+    strip.placement = "outside",
+    strip.text.y.left = element_text(angle = 90, face = "plain"),  # Density strips unbolded
   )
 
 
@@ -992,7 +945,7 @@ combined_plot <- (
 ) +
   patchwork::plot_layout(guides = "collect") +
   patchwork::plot_annotation(
-    title = "Daily Ψ bias: traditional methods vs. asymptotic regression",
+    title = "Daily occupancy bias: traditional methods vs. asymptotic regression",
     theme = theme(
       plot.title = element_text(size = 15, face = "bold", hjust = 0.5),
       legend.position = "bottom",
