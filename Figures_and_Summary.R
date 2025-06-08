@@ -516,7 +516,8 @@ quantile(filtered_results$DailyBias, probs = c(0.025, 0.975), na.rm = TRUE)
 
 
 
-# NOW FOR INSTANTANEOUS
+
+# Figure S1
 # ------------------------------------------------------------------------------
 # Filter out "Initial" model
 # ------------------------------------------------------------------------------
@@ -533,7 +534,7 @@ success_rates <- filtered_results %>%
     .groups = "drop"
   ) %>%
   mutate(
-    success_label = ifelse(is.na(success_rate), "", paste0(round(success_rate * 100, 1), "%"))  # Format label
+    success_label = ifelse(is.na(success_rate), "", paste0(round(success_rate * 100, 1), "%"))
   )
 
 # ------------------------------------------------------------------------------
@@ -542,7 +543,7 @@ success_rates <- filtered_results %>%
 mse_values <- filtered_results %>%
   group_by(Model, density) %>%
   summarise(
-    mse = mean(InstBias^2, na.rm = TRUE) + var(InstBias, na.rm = TRUE),  # MSE = Mean(Squared Error) + Variance
+    mse = mean(InstBias^2, na.rm = TRUE) + var(InstBias, na.rm = TRUE),
     .groups = "drop"
   )
 
@@ -550,21 +551,37 @@ mse_values <- filtered_results %>%
 plot_labels <- success_rates %>%
   left_join(mse_values, by = c("Model", "density"))
 
+# ------------------------------------------------------------------------------
+# Calculate the statistical summaries for each group
+# ------------------------------------------------------------------------------
+box_stats <- filtered_results %>%
+  group_by(Model, density) %>%
+  summarise(
+    q3 = quantile(InstBias, 0.75, na.rm = TRUE),
+    iqr = IQR(InstBias, na.rm = TRUE),
+    upper_whisker = min(max(InstBias, na.rm = TRUE), q3 + 1.5 * iqr),
+    .groups = "drop"
+  )
+
+# Merge the box stats with the plot labels
+plot_labels <- plot_labels %>%
+  left_join(box_stats, by = c("Model", "density"))
 
 # ------------------------------------------------------------------------------
-# Plot: Faceted Box Plot (by Density) with Success Rate & MSE (as triangles)
-# ------------------------------------------------------------------------------
 # Define custom labels for density levels
+# ------------------------------------------------------------------------------
 density_labels <- c(
   "0.2" = "0.2 thrush / ha",
   "0.1" = "0.1 thrush / ha",
   "0.05" = "0.05 thrush / ha"
 )
 
-# Plot with customized density labels
+# ------------------------------------------------------------------------------
+# Final plot
+# ------------------------------------------------------------------------------
 ggplot(filtered_results, aes(x = Model, y = InstBias, fill = Model)) +
-  geom_boxplot(alpha = 0.7, show.legend = FALSE, outlier.alpha = 1, outlier.size = 0.8)+
-  scale_fill_viridis_d(option = "viridis", name = "Model") +
+  geom_boxplot(alpha = 0.7, show.legend = FALSE, outlier.alpha = 0, outlier.size = 0) +
+  scale_fill_viridis_d(option = "viridis", name = NULL) +  # Remove legend title "Model"
   scale_x_discrete(labels = c(
     "AsymptoticRegression" = "Asymptotic regression",
     "ExponentialDecay" = "Exponential decay",
@@ -573,12 +590,12 @@ ggplot(filtered_results, aes(x = Model, y = InstBias, fill = Model)) +
     "MichaelisMenten" = "Michaelis-Menten"
   )) +
   facet_grid(
-    rows = vars(density), 
-    labeller = labeller(density = density_labels)  
+    rows = vars(density),
+    labeller = labeller(density = density_labels),
+    switch = "y"
   ) +
   labs(
     title = "Comparing instantaneous bias between asymptotic models",
-    x = "Model",
     y = "Instantaneous bias",
     shape = ""
   ) +
@@ -588,7 +605,7 @@ ggplot(filtered_results, aes(x = Model, y = InstBias, fill = Model)) +
     data = plot_labels,
     aes(
       x = Model,
-      y = max(filtered_results$InstBias, na.rm = TRUE) + 0.1,
+      y = upper_whisker + 0.1,  # ✅ This adapts per facet
       label = success_label
     ),
     vjust = 0,
@@ -613,9 +630,13 @@ ggplot(filtered_results, aes(x = Model, y = InstBias, fill = Model)) +
   theme(
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
+    axis.title.x = element_blank(),  # ✅ Removed x-axis label
     axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "bottom"
+    legend.position = "none",
+    strip.placement = "outside",
+    strip.text.y.left = element_text(angle = 90, face = "plain"),  # Density strips unbolded
   )
+
 
 
 # ------------------------------------------------------------------------------
@@ -667,6 +688,7 @@ print(instbias_summary_by_model)
 
 # NOW FOR SEASONAL
 
+# Figure S2
 # ------------------------------------------------------------------------------
 # Filter out "Initial" model
 # ------------------------------------------------------------------------------
@@ -687,7 +709,7 @@ success_rates <- filtered_results %>%
   )
 
 # ------------------------------------------------------------------------------
-# Compute MSE for SeasonalBias
+# Compute MSE per Model and Density
 # ------------------------------------------------------------------------------
 mse_values <- filtered_results %>%
   group_by(Model, density) %>%
@@ -696,12 +718,28 @@ mse_values <- filtered_results %>%
     .groups = "drop"
   )
 
-# Merge for plotting
+# Merge Success Rate & MSE for labeling
 plot_labels <- success_rates %>%
   left_join(mse_values, by = c("Model", "density"))
 
 # ------------------------------------------------------------------------------
-# Faceted Boxplot for SeasonalBias
+# Calculate the statistical summaries for each group
+# ------------------------------------------------------------------------------
+box_stats <- filtered_results %>%
+  group_by(Model, density) %>%
+  summarise(
+    q3 = quantile(SeasonBias, 0.75, na.rm = TRUE),
+    iqr = IQR(SeasonBias, na.rm = TRUE),
+    upper_whisker = min(max(SeasonBias, na.rm = TRUE), q3 + 1.5 * iqr),
+    .groups = "drop"
+  )
+
+# Merge the box stats with the plot labels
+plot_labels <- plot_labels %>%
+  left_join(box_stats, by = c("Model", "density"))
+
+# ------------------------------------------------------------------------------
+# Define custom labels for density levels
 # ------------------------------------------------------------------------------
 density_labels <- c(
   "0.2" = "0.2 thrush / ha",
@@ -709,9 +747,12 @@ density_labels <- c(
   "0.05" = "0.05 thrush / ha"
 )
 
+# ------------------------------------------------------------------------------
+# Final plot
+# ------------------------------------------------------------------------------
 ggplot(filtered_results, aes(x = Model, y = SeasonBias, fill = Model)) +
-  geom_boxplot(alpha = 0.7, show.legend = FALSE, outlier.alpha = 1, outlier.size = 0.8) +
-  scale_fill_viridis_d(option = "viridis", name = "Model") +
+  geom_boxplot(alpha = 0.7, show.legend = FALSE, outlier.alpha = 0, outlier.size = 0) +
+  scale_fill_viridis_d(option = "viridis", name = NULL) +  # Remove legend title "Model"
   scale_x_discrete(labels = c(
     "AsymptoticRegression" = "Asymptotic regression",
     "ExponentialDecay" = "Exponential decay",
@@ -719,10 +760,13 @@ ggplot(filtered_results, aes(x = Model, y = SeasonBias, fill = Model)) +
     "LogisticGrowth" = "Logistic growth",
     "MichaelisMenten" = "Michaelis-Menten"
   )) +
-  facet_grid(rows = vars(density), labeller = labeller(density = density_labels)) +
+  facet_grid(
+    rows = vars(density),
+    labeller = labeller(density = density_labels),
+    switch = "y"
+  ) +
   labs(
     title = "Comparing seasonal bias between asymptotic models",
-    x = "Model",
     y = "Seasonal bias",
     shape = ""
   ) +
@@ -730,13 +774,26 @@ ggplot(filtered_results, aes(x = Model, y = SeasonBias, fill = Model)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "red", size = 1.5) +
   geom_text(
     data = plot_labels,
-    aes(x = Model, y = max(filtered_results$SeasonBias, na.rm = TRUE) + 0.3, label = success_label),
-    vjust = 0, fontface = "bold", color = "black", size = 3
+    aes(
+      x = Model,
+      y = 0.8,  # ✅ This adapts per facet
+      label = success_label
+    ),
+    vjust = 0,
+    fontface = "bold",
+    color = "black",
+    size = 3
   ) +
   geom_point(
     data = plot_labels,
-    aes(x = Model, y = mse, shape = "MSE"),
-    color = "black", fill = "black", size = 3
+    aes(
+      x = Model,
+      y = mse,
+      shape = "MSE"
+    ),
+    color = "black",
+    fill = "black",
+    size = 3
   ) +
   scale_shape_manual(values = c("MSE" = 24)) +
   guides(fill = "none", shape = guide_legend(override.aes = list(size = 4))) +
@@ -744,8 +801,11 @@ ggplot(filtered_results, aes(x = Model, y = SeasonBias, fill = Model)) +
   theme(
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
+    axis.title.x = element_blank(),  # ✅ Removed x-axis label
     axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "bottom"
+    legend.position = "none",
+    strip.placement = "outside",
+    strip.text.y.left = element_text(angle = 90, face = "plain"),  # Density strips unbolded
   )
 
 # ------------------------------------------------------------------------------
@@ -784,8 +844,6 @@ mean(filtered_results$SeasonBias, na.rm = TRUE)
 quantile(filtered_results$SeasonBias, probs = c(0.025, 0.975), na.rm = TRUE)
 
 
-
-
 # ------------------------------------------------------------------------------
 # Compute Mean SeasonBias & 95% Confidence Limits by Model
 # ------------------------------------------------------------------------------
@@ -822,9 +880,8 @@ print(full_summary)
 
 
 #-------------------------------------------------------------------------------
-# Figure 7 Options
+# Figure 7
 #-------------------------------------------------------------------------------
-
 # ------------------------------------------------------------------------------
 # Filter data for Initial and AR models
 # ------------------------------------------------------------------------------
@@ -957,8 +1014,12 @@ combined_plot <- (
 # Display the plot
 combined_plot
 
+
+
+
+
 #------------------------------------------------------------------------------
-# Binomial Model
+# Binomial Regression Model
 #------------------------------------------------------------------------------
 combined_data <- full_results_long %>%
   filter(Model %in% c("Initial", "AsymptoticRegression"))
@@ -977,21 +1038,12 @@ binomial_data <- binomial_data %>%
     surveyLength = relevel(factor(surveyLength), ref = "5")  # Set surveyLength reference to 15
   )
 
-# Fit the binomial logistic regression model
-# binomial_model <- glm(closer_to_zero ~ density + radius + intervalLength + nSurveys + surveyLength, 
-#                       data = binomial_data, family = binomial)
-
-# binomial_model <- glmer(closer_to_zero ~ density + radius + intervalLength + nSurveys + surveyLength + (1| simulation), 
-#                       data = binomial_data, family = binomial)
-
 binomial_model <- glmer(
   closer_to_zero ~ density + radius + intervalLength + nSurveys + surveyLength + (1 | simulation), 
   data = binomial_data, 
   family = binomial, 
   control = glmerControl(optimizer = "bobyqa")
 )
-
-
 
 # View the model summary
 summary(binomial_model)
@@ -1002,92 +1054,5 @@ filtered_data = full_results_long[full_results_long$Model ==c("AsymptoticRegress
 filtered_data = filtered_data[filtered_data$nSurveys == 2,]
 filtered_data = filtered_data[filtered_data$surveyLength == 5,]
 filtered_data = filtered_data[filtered_data$intervalLength == "none",]
-
-
-ggplot(filtered_data, aes(x = Model, y = DailyBias, fill = Model)) +
-  geom_boxplot(alpha = 0.7) +
-  scale_fill_brewer(palette = "Set2", name = "Model") +
-  facet_grid(rows = vars(density)) +  # Facet by density
-  labs(
-    title = "Box Plot of Daily Bias by Model and Density with Success Rate & MSE",
-    x = "Model",
-    y = "Daily Bias"
-  ) +
-  ylim(-0.8, 1.2) +  # Adjust to fit labels
-  geom_hline(yintercept = 0, linetype = "dashed", color = "red", size = 1)+
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "none"
-  )
-#------------------------------------------------------------------------------
-
-
-
-
-#------------------------------------------------------------------------------
-# Some data tables
-#------------------------------------------------------------------------------
-# Group by Model, intervalLength, radius, and surveyLength, then calculate mean success rate
-grouped_success_rates <- bias_results %>%
-  group_by(Model) %>%
-  summarise(
-    mean_success_rate = mean(success_rate),
-    .groups = "drop"  # Ensure the result is ungrouped
-  )
-
-
-# View the grouped success rates
-print(grouped_success_rates)
-
-
-
-# Combining Daily Bias and Asymptotic Regression and Looking at How Often Truth is Between The Two
-
-# Compute the average DailyBias between "Initial" and "AsymptoticRegression"
-combined_model <- full_results_long %>%
-  filter(Model %in% c("Initial", "AsymptoticRegression")) %>%
-  group_by(simulation, surveyLength, intervalLength, nSurveys, radius, density) %>%
-  summarise(DailyBias = mean(DailyBias, na.rm = TRUE), .groups = "drop") %>%
-  mutate(Model = "Combined")  # Assign "Combined" as the new model type
-
-# Add the "Combined" model type back into the full dataset
-full_results_long <- bind_rows(full_results_long, combined_model)
-
-# Pivot data to get Initial and AsymptoticRegression estimates side by side
-house_truth_data <- full_results_long %>%
-  filter(Model %in% c("Initial", "AsymptoticRegression")) %>%
-  select(simulation, surveyLength, intervalLength, nSurveys, radius, density, Model, DailyBias) %>%
-  pivot_wider(names_from = Model, values_from = DailyBias,
-              names_prefix = "DailyEst_")  # Creates DailyEst_Initial & DailyEst_AsymptoticRegression
-
-# Define HouseTruth conditions
-house_truth_data <- house_truth_data %>%
-  mutate(
-    HouseTruth = case_when(
-      DailyEst_Initial < 0 & DailyEst_AsymptoticRegression > 0 ~ "Yes",  # True value is between estimates
-      DailyEst_Initial > 0 & DailyEst_AsymptoticRegression < 0 ~ "Yes",  # True value is between estimates
-      DailyEst_Initial > 0 & DailyEst_AsymptoticRegression > 0 ~ "Over",  # Both overestimate
-      DailyEst_Initial < 0 & DailyEst_AsymptoticRegression < 0 ~ "Under"  # Both underestimate
-    ),
-    BooleanHouseTruth = ifelse(HouseTruth == "Yes", 1, 0)  # Convert Yes → 1, all else → 0
-  )
-
-
-house_truth_data$difference = abs(house_truth_data$DailyEst_AsymptoticRegression - house_truth_data$DailyEst_Initial)
-sum(house_truth_data$BooleanHouseTruth, na.rm = TRUE)/length(house_truth_data$BooleanHouseTruth)
-prop.table(table(house_truth_data$HouseTruth))
-mean(house_truth_data$difference, na.rm = T)
-
-# Step 1: Run the binomial logistic regression model
-house_truth_model <- glm(
-  BooleanHouseTruth ~ surveyLength + intervalLength + nSurveys + radius, 
-  data = house_truth_data, 
-  family = binomial
-)
-
-# Step 2: View the model summary
-summary(house_truth_model)
-
 
 
