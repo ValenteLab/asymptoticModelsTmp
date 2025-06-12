@@ -1,6 +1,5 @@
 rm(list=ls())
 
-
 # Load necessary libraries
 library(dplyr)
 library(tidyverse)
@@ -10,7 +9,6 @@ library(lme4)
 full_results.05 = read.csv("./fullSummaries/Full_Results_Summary0.05.csv")
 full_results.1 = read.csv("./fullSummaries/Full_Results_Summary0.1.csv")
 full_results.2 = read.csv("./fullSummaries/Full_Results_Summary0.2.csv")
-
 
 # Combine datasets
 # bias_results <- bind_rows(bias_results.05.3, bias_results.1.3, bias_results.2.3)
@@ -31,7 +29,6 @@ colnames(full_results)[colnames(full_results) == "ExpDec_DailyBias"] <- "Exponen
 colnames(full_results)[colnames(full_results) == "ExpDec_SeasonBias"] <- "ExponentialDecay_SeasonBias"
 colnames(full_results)[colnames(full_results) == "ExpDec_InstBias"] <- "ExponentialDecay_InstBias"
 colnames(full_results)[colnames(full_results) == "Initial_InstantBias"] <- "Initial_InstBias"
-
 
 # Trim results
 full_results_trimmed <- full_results %>%
