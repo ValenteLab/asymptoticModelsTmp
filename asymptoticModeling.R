@@ -1,11 +1,10 @@
 rm(list=ls())
 
-
-
 #Density to analyze
-densToAnalyze = 0.2
+# IMPORTANT: RE-RUN SCRIPT WITH EACH DENSITY BEFORE RUNNING binomialRegression.R
+densToAnalyze = 0.05
 # densToAnalyze = 0.1
-# densToAnalyze = 0.05
+# densToAnalyze = 0.2
 
 # Record the start time for the script execution
 startTime = Sys.time()
@@ -15,7 +14,6 @@ require(gdata)      # General-purpose R data functions
 require(tidyverse)  # Collection of useful packages (ggplot2, dplyr, etc.)
 require(minpack.lm) # Nonlinear least squares optimization
 require(forcats)    # Handling factors in tidy data
-require(chngpt)     # Change-point regression models
 
 # Initialize lists to store data for different radii
 data_50m_list <- list()  # For data with 50m radius
@@ -93,107 +91,61 @@ grouped_data_frames <- grouped_data %>%
 # Model fitting function
 fit_model <- function(data, sim_index, model_formula, start_list, model_name, dens) {
   
-  data = data %>% 
-    filter(density==dens)
+  data <- data %>% 
+    filter(density == dens)
   
   tryCatch({
-    if (model_name == "UpperHingeThreshold") {
-      # Fit the Upper Hinge Threshold Regression Model
-      fitted_model <- chngptm(
-        formula.1 = psi ~ 1,           # Mean occupancy (constant)
-        formula.2 = ~ surveyLength,   # Change point depends on survey length
-        data = data,
-        family = "gaussian",           # Use Gaussian regression
-        type = "M10",                  # Model type
-        lb.quantile = 0.01,           # Lower quantile bound
-        ub.quantile = 0.99,           # Upper quantile bound
-        tol = 1e-04,                  # Convergence tolerance
-        maxit = 1000                  # Maximum iterations
+    # Fit nonlinear models
+    fitted_model <- nlsLM(
+      model_formula,               # Nonlinear formula
+      data = data,
+      start = start_list,          # Starting parameters
+      control = nls.lm.control(maxiter = 500)
+    )
+    
+    coefs <- coef(fitted_model)
+    names(coefs) <- gsub("\\.\\d+%", "", names(coefs))  # Clean up coefficient names
+    
+    # Predict psi at surveyLength = 0
+    yIntercept <- predict(fitted_model, newdata = data.frame(surveyLength = 0))
+    
+    # Extract model-specific asymptote
+    asymptote <- switch(
+      model_name,
+      "ExponentialDecay" = coefs["asymptote"],
+      "MichaelisMenten" = coefs["Vmax"] + coefs["c"],
+      "AsymptoticRegression" = coefs["a"] + coefs["b"],
+      "LogisticGrowth" = coefs["K"],
+      "Gompertz" = coefs["a"],
+      NA
+    )
+    
+    residuals <- data$psi - predict(fitted_model, newdata = data)
+    sse <- sum(residuals^2, na.rm = TRUE)
+    
+    data <- data %>%
+      mutate(
+        !!paste0(model_name, "_success") := TRUE,
+        !!paste0(model_name, "_predicted_asymptote") := asymptote,
+        !!paste0(model_name, "_sse") := sse,
+        !!paste0(model_name, "_predicted_yIntercept") := yIntercept
       )
-      
-      # Extract asymptote and threshold
-      asymptote <- coef(fitted_model)["(Intercept)"]
-      threshold <- fitted_model$chngpt
-      
-      # Predict psi at surveyLength = 0
-      yIntercept <- predict(fitted_model, newdata = data.frame(surveyLength = 0))
-      
-      # Calculate SSE
-      residuals <- data$psi - predict(fitted_model, newdata = data)
-      sse <- sum(residuals^2, na.rm = TRUE)
-      
-      # Add results to the data
-      data <- data %>%
-        mutate(
-          UpperHingeThreshold_success = TRUE,
-          UpperHingeThreshold_predicted_asymptote = asymptote,
-          UpperHingeThreshold_threshold = threshold,
-          UpperHingeThreshold_sse = sse,
-          UpperHingeThreshold_predicted_yIntercept = yIntercept
-        )
-    } else {
-      # Fit other nonlinear models
-      fitted_model <- nlsLM(
-        model_formula,               # Nonlinear formula
-        data = data,
-        start = start_list,          # Starting parameters
-        control = nls.lm.control(maxiter = 500)
-      )
-      
-      
-      coefs <- coef(fitted_model)
-      names(coefs) <- gsub("\\.\\d+%", "", names(coefs)) # This line removes a bug that causes issues during extraction
-      
-      # Predict psi at surveyLength = 0
-      yIntercept <- predict(fitted_model, newdata = data.frame(surveyLength = 0))
-      
-      # Extract model-specific asymptote
-      asymptote <- switch(
-        model_name,
-        "ExponentialDecay" = coefs["asymptote"],
-        "MichaelisMenten" = coefs["Vmax"] + coefs["c"],  # Modified for nonzero intercept
-        "AsymptoticRegression" = coefs["a"] + coefs["b"],
-        "LogisticGrowth" = coefs["K"],
-        "Gompertz" = coefs["a"],
-        NA
-      )
-      
-      residuals <- data$psi - predict(fitted_model, newdata = data)
-      sse <- sum(residuals^2, na.rm = TRUE)
-      
-      # Add results to the data
-      data <- data %>%
-        mutate(
-          !!paste0(model_name, "_success") := TRUE,
-          !!paste0(model_name, "_predicted_asymptote") := asymptote,
-          !!paste0(model_name, "_sse") := sse,
-          !!paste0(model_name, "_predicted_yIntercept") := yIntercept
-        )
-    }
+    
     return(data)
+    
   }, error = function(e) {
     # Handle errors for all models
-    if (model_name == "UpperHingeThreshold") {
-      data <- data %>%
-        mutate(
-          UpperHingeThreshold_success = FALSE,
-          UpperHingeThreshold_predicted_asymptote = NA,
-          UpperHingeThreshold_threshold = NA,
-          UpperHingeThreshold_sse = NA,
-          UpperHingeThreshold_predicted_yIntercept = NA
-        )
-    } else {
-      data <- data %>%
-        mutate(
-          !!paste0(model_name, "_success") := FALSE,
-          !!paste0(model_name, "_predicted_asymptote") := NA,
-          !!paste0(model_name, "_sse") := NA,
-          !!paste0(model_name, "_predicted_yIntercept") := NA
-        )
-    }
+    data <- data %>%
+      mutate(
+        !!paste0(model_name, "_success") := FALSE,
+        !!paste0(model_name, "_predicted_asymptote") := NA,
+        !!paste0(model_name, "_sse") := NA,
+        !!paste0(model_name, "_predicted_yIntercept") := NA
+      )
     return(data)
   })
 }
+
 
 
 # Define truncation sizes for subsets of survey data representing various survey lenths (durations)
@@ -225,8 +177,7 @@ for (group_name in names(grouped_data_frames)) {  # Opening for group_name
       MichaelisMenten = vector("list", length = length(unique(data_subset$simulation))),
       AsymptoticRegression = vector("list", length = length(unique(data_subset$simulation))),
       LogisticGrowth = vector("list", length = length(unique(data_subset$simulation))),
-      Gompertz = vector("list", length = length(unique(data_subset$simulation))),
-      UpperHingeThreshold = vector("list", length = length(unique(data_subset$simulation)))  # Add threshold model
+      Gompertz = vector("list", length = length(unique(data_subset$simulation)))
     )
     
     # Used to track progress
@@ -250,8 +201,7 @@ for (group_name in names(grouped_data_frames)) {  # Opening for group_name
               "MichaelisMenten" = psi ~ Vmax * surveyLength / (Km + surveyLength) + c,
               "AsymptoticRegression" = psi ~ a + b * (1 - exp(-c * surveyLength)),
               "LogisticGrowth" = psi ~ K / (1 + exp(-r * (surveyLength - x0))),
-              "Gompertz" = psi ~ a * exp(-exp(b - c * surveyLength)),
-              "UpperHingeThreshold" = NULL  # Formula handled previously in fit_model
+              "Gompertz" = psi ~ a * exp(-exp(b - c * surveyLength))
             ),
             start_list = switch( # Provide initial parameter values for models
               model_name,
@@ -259,8 +209,7 @@ for (group_name in names(grouped_data_frames)) {  # Opening for group_name
               "MichaelisMenten" = list(Vmax = max(.x$psi, na.rm = TRUE), Km = mean(.x$surveyLength, na.rm = TRUE), c = 0.1),
               "AsymptoticRegression" = list(a = min(.x$psi, na.rm = TRUE), b = 0.5, c = 0.1),
               "LogisticGrowth" = list(K = max(.x$psi, na.rm = TRUE), r = 0.1, x0 = mean(.x$surveyLength, na.rm = TRUE)),
-              "Gompertz" = list(a = max(.x$psi, na.rm = TRUE), b = 0.1, c = 0.1),
-              "UpperHingeThreshold" = NULL  # Start list not applicable
+              "Gompertz" = list(a = max(.x$psi, na.rm = TRUE), b = 0.1, c = 0.1)
             ),
             model_name = model_name, dens=densToAnalyze
           )
@@ -282,21 +231,18 @@ for (group_name in names(grouped_data_frames)) {  # Opening for group_name
         AsymptoticRegression_DailyBias = plogis(AsymptoticRegression_predicted_asymptote) - dailyOcc,
         LogisticGrowth_DailyBias = plogis(LogisticGrowth_predicted_asymptote) - dailyOcc,
         Gompertz_DailyBias = plogis(Gompertz_predicted_asymptote) - dailyOcc,
-        UpperHingeThreshold_DailyBias = plogis(UpperHingeThreshold_predicted_asymptote) - dailyOcc,
         # Season Biases
         ExpDec_SeasonBias = plogis(ExponentialDecay_predicted_asymptote) - seasonOcc,
         MichaelisMenten_SeasonBias = plogis(MichaelisMenten_predicted_asymptote) - seasonOcc,
         AsymptoticRegression_SeasonBias = plogis(AsymptoticRegression_predicted_asymptote) - seasonOcc,
         LogisticGrowth_SeasonBias = plogis(LogisticGrowth_predicted_asymptote) - seasonOcc,
         Gompertz_SeasonBias = plogis(Gompertz_predicted_asymptote) - seasonOcc,
-        UpperHingeThreshold_SeasonBias = plogis(UpperHingeThreshold_predicted_asymptote) - seasonOcc,
         # Instantaneous Biases
         ExpDec_InstBias = plogis(ExponentialDecay_predicted_yIntercept) - instOcc,
         MichaelisMenten_InstBias = plogis(MichaelisMenten_predicted_yIntercept) - instOcc,
         AsymptoticRegression_InstBias = plogis(AsymptoticRegression_predicted_yIntercept) - instOcc,
         LogisticGrowth_InstBias = plogis(LogisticGrowth_predicted_yIntercept) - instOcc,
         Gompertz_InstBias = plogis(Gompertz_predicted_yIntercept) - instOcc,
-        UpperHingeThreshold_InstBias = plogis(UpperHingeThreshold_predicted_yIntercept) - instOcc
       )
     
     # Store in results list
@@ -315,5 +261,9 @@ print(elapsedTime)
 combined_results_summary <- bind_rows(results_summary_list)  
 
 
-# Save the combined data frame as a CSV
+# Save the combined data frame as a CSV.
+
+#-----------------------------------------------------------------
+# IMPORTANT: RE-RUN THIS SCRIPT AFTER CHANGING DENSITY AT THE TOP
+#-----------------------------------------------------------------
 write.csv(combined_results_summary, file = paste0('Full_Results_Summary', densToAnalyze, '.csv'), row.names = FALSE)

@@ -3,7 +3,7 @@ rm(list=ls())
 # Load necessary libraries
 library(dplyr)
 library(tidyverse)
-library(lme4)
+library(lme4) # for binomial regression
 
 # Load datasets
 full_results.05 = read.csv("./fullSummaries/Full_Results_Summary0.05.csv")
