@@ -7,6 +7,10 @@ library(lme4) # for binomial regression
 
 # Load datasets
 full_results.05 = read.csv("./fullSummaries/Full_Results_Summary0.05.csv")
+
+#--------------------------------------------------------------------------------------------
+# IMPORTANT: THE FOLLOWING .CSV FILES MUST BE GENERATED USING THE asymptoticModeling.R SCRIPT
+#--------------------------------------------------------------------------------------------
 full_results.1 = read.csv("./fullSummaries/Full_Results_Summary0.1.csv")
 full_results.2 = read.csv("./fullSummaries/Full_Results_Summary0.2.csv")
 
