@@ -266,4 +266,6 @@ combined_results_summary <- bind_rows(results_summary_list)
 #-----------------------------------------------------------------
 # IMPORTANT: RE-RUN THIS SCRIPT AFTER CHANGING DENSITY AT THE TOP
 #-----------------------------------------------------------------
-write.csv(combined_results_summary, file = paste0('Full_Results_Summary', densToAnalyze, '.csv'), row.names = FALSE)
+# write.csv(combined_results_summary, file = paste0('Full_Results_Summary', densToAnalyze, '.csv'), row.names = FALSE)
+# For storage space and computing time considerations, this script only runs through a subset of the "occResults" files
+# The complete "Full_Results_Summary" files are already saved locally.
