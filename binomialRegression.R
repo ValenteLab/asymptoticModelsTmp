@@ -90,7 +90,8 @@ binomial_data <- binomial_data %>%
   )
 
 binomial_model <- glmer(
-  closer_to_zero ~ density + radius + intervalLength + nSurveys + surveyLength + (1 | simulation), 
+  # closer_to_zero ~ density + radius + intervalLength + nSurveys + surveyLength + (1 | simulation), 
+  closer_to_zero ~ radius + intervalLength + nSurveys + surveyLength + (1 | simulation), 
   data = binomial_data, 
   family = binomial, 
   control = glmerControl(optimizer = "bobyqa")

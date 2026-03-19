@@ -1,7 +1,6 @@
 rm(list=ls())
 
-# MUST DELETE LATER
-setwd("C:/ValenteLab/asymptoticModelsTmp")
+
 
 #Density to analyze
 # IMPORTANT: RE-RUN SCRIPT WITH EACH DENSITY BEFORE RUNNING binomialRegression.R
