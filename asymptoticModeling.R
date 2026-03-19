@@ -1,5 +1,8 @@
 rm(list=ls())
 
+# MUST DELETE LATER
+setwd("C:/ValenteLab/asymptoticModelsTmp")
+
 #Density to analyze
 # IMPORTANT: RE-RUN SCRIPT WITH EACH DENSITY BEFORE RUNNING binomialRegression.R
 densToAnalyze = 0.05
@@ -61,7 +64,8 @@ combined_100m <- bind_rows(
 )
 
 # Combine both 50m and 100m datasets
-combined_df <- bind_rows(combined_50m, combined_100m)
+combined_df <- bind_rows(combined_50m, combined_100m) %>%
+  filter(density == densToAnalyze)
 
 # Remove the 'X' column (unnecessary in the data)
 combined_df <- combined_df %>% select(-X)
@@ -69,7 +73,7 @@ combined_df <- combined_df %>% select(-X)
 # Group data by simulation settings and ensure exactly 30 rows per simulation
 grouped_data <- combined_df %>%
   group_by(intervalLength, nSurveys, radius, simulation) %>%
-  filter(n() == 90) %>%  # Ensure each simulation has exactly 30 rows
+  # filter(n() == 90) %>%  # Ensure each simulation has exactly 30 rows
   ungroup()
 
 # Split the grouped data into separate data frames for each combination
@@ -91,8 +95,8 @@ grouped_data_frames <- grouped_data %>%
 # Model fitting function
 fit_model <- function(data, sim_index, model_formula, start_list, model_name, dens) {
   
-  data <- data %>% 
-    filter(density == dens)
+  # data <- data %>% 
+  #   filter(density %in% dens) # Fixing
   
   tryCatch({
     # Fit nonlinear models
@@ -162,6 +166,7 @@ for (group_name in names(grouped_data_frames)) {  # Opening for group_name
   truncated_data_frames <- lapply(truncation_sizes, function(size) {
     group_data %>%
       group_by(simulation) %>%   # Group by simulation
+      arrange(surveyLength) %>%
       slice_head(n = size) %>%   # Select the first `size` rows for each simulation
       ungroup()                  # Remove grouping after slicing
   }) %>%
@@ -268,4 +273,5 @@ combined_results_summary <- bind_rows(results_summary_list)
 #-----------------------------------------------------------------
 # write.csv(combined_results_summary, file = paste0('Full_Results_Summary', densToAnalyze, '.csv'), row.names = FALSE)
 # For storage space and computing time considerations, this script only runs through a subset of the "occResults" files
-# The complete "Full_Results_Summary" files are already saved locally.
+# A complete "Full_Results_Summary" file for density 0.05 is saved locally.
+# 0.1 and 0.2 densities would be generated using this same script

@@ -10,16 +10,18 @@ full_results.05 = read.csv("./fullSummaries/Full_Results_Summary0.05.csv")
 
 #--------------------------------------------------------------------------------------------
 # IMPORTANT: THE FOLLOWING .CSV FILES MUST BE GENERATED USING THE asymptoticModeling.R SCRIPT
+# Not included in Zip File due to storage space
 #--------------------------------------------------------------------------------------------
-full_results.1 = read.csv("./fullSummaries/Full_Results_Summary0.1.csv")
-full_results.2 = read.csv("./fullSummaries/Full_Results_Summary0.2.csv")
+# full_results.1 = read.csv("./fullSummaries/Full_Results_Summary0.1.csv")
+# full_results.2 = read.csv("./fullSummaries/Full_Results_Summary0.2.csv")
 
 # Combine datasets
 # bias_results <- bind_rows(bias_results.05.3, bias_results.1.3, bias_results.2.3)
 full_results <- bind_rows(
-  full_results.05 %>% mutate(Density = "0.05"),
-  full_results.1 %>% mutate(Density = "0.1"),
-  full_results.2 %>% mutate(Density = "0.2")
+  full_results.05 %>% mutate(Density = "0.05")
+  # ,
+  # full_results.1 %>% mutate(Density = "0.1"),
+  # full_results.2 %>% mutate(Density = "0.2")
 )
 
 # Adjust data type
@@ -42,8 +44,11 @@ full_results_trimmed <- full_results %>%
          Gompertz_success, Gompertz_DailyBias, Gompertz_SeasonBias, Gompertz_InstBias,
          MichaelisMenten_success, MichaelisMenten_DailyBias, MichaelisMenten_SeasonBias, MichaelisMenten_InstBias,
          LogisticGrowth_success, LogisticGrowth_DailyBias, LogisticGrowth_SeasonBias, LogisticGrowth_InstBias,
-         AsymptoticRegression_success, AsymptoticRegression_DailyBias, AsymptoticRegression_SeasonBias, AsymptoticRegression_InstBias,
-         UpperHingeThreshold_success, UpperHingeThreshold_threshold, UpperHingeThreshold_DailyBias, UpperHingeThreshold_SeasonBias, UpperHingeThreshold_InstBias)
+         AsymptoticRegression_success, AsymptoticRegression_DailyBias, AsymptoticRegression_SeasonBias, AsymptoticRegression_InstBias
+         # ,
+         # Upper Hinge Metrics (not relevant to manuscript) commented Out 
+         # UpperHingeThreshold_success, UpperHingeThreshold_threshold, UpperHingeThreshold_DailyBias, UpperHingeThreshold_SeasonBias, UpperHingeThreshold_InstBias
+         )
 
 # Pivot longer to make each scenario a row
 full_results_long <- full_results_trimmed %>%
@@ -54,8 +59,10 @@ full_results_long <- full_results_trimmed %>%
       Gompertz_success, Gompertz_DailyBias, Gompertz_SeasonBias, Gompertz_InstBias,
       MichaelisMenten_success, MichaelisMenten_DailyBias, MichaelisMenten_SeasonBias, MichaelisMenten_InstBias,
       LogisticGrowth_success, LogisticGrowth_DailyBias, LogisticGrowth_SeasonBias, LogisticGrowth_InstBias,
-      AsymptoticRegression_success, AsymptoticRegression_DailyBias, AsymptoticRegression_SeasonBias, AsymptoticRegression_InstBias,
-      UpperHingeThreshold_success, UpperHingeThreshold_threshold, UpperHingeThreshold_DailyBias, UpperHingeThreshold_SeasonBias, UpperHingeThreshold_InstBias
+      AsymptoticRegression_success, AsymptoticRegression_DailyBias, AsymptoticRegression_SeasonBias, AsymptoticRegression_InstBias
+      # ,
+      # Upper Hinge Metrics (not relevant to manuscript) commented Out 
+      # UpperHingeThreshold_success, UpperHingeThreshold_threshold, UpperHingeThreshold_DailyBias, UpperHingeThreshold_SeasonBias, UpperHingeThreshold_InstBias
     ),
     names_to = c("Model", ".value"),  # Split names into "Model" and corresponding value types
     names_sep = "_"  # Separator between model name and variable type
