@@ -274,4 +274,4 @@ combined_results_summary <- bind_rows(results_summary_list)
 # write.csv(combined_results_summary, file = paste0('Full_Results_Summary', densToAnalyze, '.csv'), row.names = FALSE)
 # For storage space and computing time considerations, this script only runs through a subset of the "occResults" files
 # A complete "Full_Results_Summary" file for density 0.05 is saved locally.
-# 0.1 and 0.2 densities would be generated using this same script
+# Results for 0.1 and 0.2 densities would be generated using this same script
