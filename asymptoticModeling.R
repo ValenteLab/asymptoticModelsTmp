@@ -4,9 +4,9 @@ rm(list=ls())
 
 #Density to analyze
 # IMPORTANT: RE-RUN SCRIPT WITH EACH DENSITY BEFORE RUNNING binomialRegression.R
-densToAnalyze = 0.05
+# densToAnalyze = 0.05
 # densToAnalyze = 0.1
-# densToAnalyze = 0.2
+densToAnalyze = 0.2
 
 # Record the start time for the script execution
 startTime = Sys.time()
@@ -62,17 +62,16 @@ combined_100m <- bind_rows(
   })
 )
 
-# Combine both 50m and 100m datasets
+# Combine both 50m and 100m datasets & filter by density
 combined_df <- bind_rows(combined_50m, combined_100m) %>%
   filter(density == densToAnalyze)
 
 # Remove the 'X' column (unnecessary in the data)
 combined_df <- combined_df %>% select(-X)
 
-# Group data by simulation settings and ensure exactly 30 rows per simulation
+# Group data by simulation and protocol settings (with the exception of survey length)
 grouped_data <- combined_df %>%
   group_by(intervalLength, nSurveys, radius, simulation) %>%
-  # filter(n() == 90) %>%  # Ensure each simulation has exactly 30 rows
   ungroup()
 
 # Split the grouped data into separate data frames for each combination
